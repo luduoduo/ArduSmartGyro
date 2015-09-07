@@ -192,6 +192,8 @@ int num_accel_errors = 0;
 int num_magn_errors = 0;
 int num_gyro_errors = 0;
 
+boolean output_lock_status_on;
+
 void read_sensors() {
   Read_Gyro(); // Read gyroscope
   Read_Accel(); // Read accelerometer
@@ -230,7 +232,7 @@ void reset_sensor_fusion() {
   Serial.println(TO_DEG(roll));
 
   // Init rotation matrix
-//  init_rotation_matrix(DCM_Matrix, yaw, pitch, roll);
+  //  init_rotation_matrix(DCM_Matrix, yaw, pitch, roll);
   //lufei: use 0 to skip first DCM to make current attitude 0,0,0
   init_rotation_matrix(DCM_Matrix, 0, 0, 0);
 }
@@ -318,7 +320,7 @@ void do_first_calibration()
 
     read_sensors();
     compensate_sensor_errors();
-    
+
     n++;
     total_x += Gyro_Vector[0];
     total_y += Gyro_Vector[1];
@@ -367,7 +369,6 @@ void setup()
   turn_output_stream_on();
 #endif
 
-
   //test pins
   //MISO as Input
   pinMode (INPUT_PIN_BY_MISO, INPUT);
@@ -380,12 +381,15 @@ void setup()
   digitalWrite(STATUS_LED_PIN, HIGH);
   delay(500);
   digitalWrite(STATUS_LED_PIN, LOW);
+  
+  
+  init_lock_sensor();
 }
 
 
 void do_command()
 {
-  if (Serial.available() >= 2)
+  if (Serial.available() >= 2)  
   {
     if (Serial.read() == '#')
     {
@@ -405,6 +409,17 @@ void do_command()
         Serial.print("#SYNCH");
         Serial.write(id, 2);
         Serial.println();
+      }
+      if (command == 'l')  // #l0 to close lock output, #l1 to open
+      {
+        char output_param = readChar();
+        if (output_param == '0')
+        {
+          output_lock_status_on = false;
+
+        }
+        else if (output_param == '1')
+          output_lock_status_on = true;
       }
       else if (command == 'o')
       {
@@ -530,6 +545,8 @@ void loop()
 
       if (output_stream_on || output_single_on)
         output_angles();
+        
+      check_lock_sensor();  
     }
     else  // Output sensor values
     {
