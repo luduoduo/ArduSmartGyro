@@ -59,6 +59,10 @@ int output_format = OUTPUT__FORMAT_SHORT;
 
 boolean output_errors = false;  // true or false
 
+//for lock sensor
+boolean output_lock_status_on;
+float threshold_lock = 20.0f;  //default value
+float threshold_unlock = -20.0f; //default value
 
 #define OUTPUT__HAS_RN_BLUETOOTH false  // true or false
 
@@ -192,7 +196,6 @@ int num_accel_errors = 0;
 int num_magn_errors = 0;
 int num_gyro_errors = 0;
 
-boolean output_lock_status_on;
 
 void read_sensors() {
   Read_Gyro(); // Read gyroscope
@@ -362,12 +365,8 @@ void setup()
   delay(20);  // Give sensors enough time to collect data
   reset_sensor_fusion();
 
-  // Init output
-#if (OUTPUT__HAS_RN_BLUETOOTH == true) || (OUTPUT__STARTUP_STREAM_ON == false)
   turn_output_stream_off();
-#else
-  turn_output_stream_on();
-#endif
+  output_lock_status_on = true;
 
   //test pins
   //MISO as Input
@@ -381,15 +380,15 @@ void setup()
   digitalWrite(STATUS_LED_PIN, HIGH);
   delay(500);
   digitalWrite(STATUS_LED_PIN, LOW);
-  
-  
+
+
   init_lock_sensor();
 }
 
 
 void do_command()
 {
-  if (Serial.available() >= 2)  
+  if (Serial.available() >= 2)
   {
     if (Serial.read() == '#')
     {
@@ -397,6 +396,43 @@ void do_command()
       if (command == 'f')
       {
         output_single_on = true;
+      }
+      //to init threshold up and down
+      //exmaple: "iu+170", "il-000", should be int value
+      else if (command == 'i')
+      {
+        char output_param = readChar();
+        float *thres;
+        byte id[4]; //e.g. id = "+170"
+        id[0] = readChar();
+        id[1] = readChar();
+        id[2] = readChar();
+        id[3] = readChar();
+        if (output_param == 'l')  //lock thres
+        {
+          thres = &threshold_lock;
+          init_lock_sensor();
+        }
+        else if (output_param == 'u')  //unlock thres
+        {
+          thres = &threshold_unlock;
+          init_lock_sensor();
+        }
+        else
+        {
+          Serial.println("Error!");
+          return;
+        }
+
+        *thres = (id[1]-'0') * 100 + (id[2]-'0') * 10 + id[3]-'0';
+        if (id[0] == '-')
+          *thres = -*thres;
+
+        Serial.print("!SET ");
+        Serial.print(output_param == 'd' ? 'd' : 'u');
+        Serial.print("=");
+        Serial.println(*thres);
+
       }
       else if (command == 's')
       {
@@ -545,8 +581,8 @@ void loop()
 
       if (output_stream_on || output_single_on)
         output_angles();
-        
-      check_lock_sensor();  
+
+      check_lock_sensor();
     }
     else  // Output sensor values
     {

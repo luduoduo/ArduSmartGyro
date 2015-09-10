@@ -22,19 +22,16 @@ int area_stack[3];
 int lock_status = LOCK_OPEN;
 int door_status = LOCK_OPEN;
 
-
-float threshold_pitch = 10.0f;
-
 void init_lock_sensor()
 {
   //by default, lock is open, pointer is in P area
   lock_status = LOCK_OPEN;
-  area_stack[0] = POSITIVE;
-  area_stack[1] = POSITIVE;
-  area_stack[2] = POSITIVE;
+  area_stack[0] = ACTIVE;
+  area_stack[1] = ACTIVE;
+  area_stack[2] = ACTIVE;
 }
 
-
+float alphaForLock = 0;
 void check_lock_sensor()
 {
   float DCM_Matrix_Inverse[3][3];
@@ -45,35 +42,35 @@ void check_lock_sensor()
   float zz = DCM_Matrix_Inverse[2][2];
   // float zr = sqrt(zx*zx + zy*zy + zz*zz);
   float alpha_temp = TO_DEG(atan(zx / zy));
-  float alpha;
 
   if (zx > 0 && zy < 0)
-    alpha = alpha_temp + 180;
+    alphaForLock = alpha_temp + 180;
   else if (zx < 0 && zy < 0)
-    alpha = alpha_temp - 180;
+    alphaForLock = alpha_temp - 180;
   else
-    alpha = alpha_temp;
+    alphaForLock = alpha_temp;
 
-//  Serial.print("alpha is "); Serial.print(alpha);
-//  Serial.print(",   "); Serial.print(zx>0?'+':'-');
-//  Serial.print(",   "); Serial.println(zy>0?'+':'-');
+  //  Serial.print("alpha is "); Serial.print(alpha);
+  //  Serial.print(",   "); Serial.print(zx>0?'+':'-');
+  //  Serial.print(",   "); Serial.println(zy>0?'+':'-');
 
 
   //根据pitch判断门状态
   //  update_doorStatus(TO_DEG(pitch));
 
   //根据yaw判断区域
-  update_area(alpha);
+  update_area(alphaForLock);
 
   //检查锁的状态
   bool isChanged = check_lock_status();
   if (isChanged)
     freeze_lock_status();
-  
+
   if (output_lock_status_on)
   {
-    Serial.print("lock is "); Serial.print(lock_status);
-    Serial.print("    alpha is "); Serial.println(alpha);
+    output_lock_status();
+    //    Serial.print("lock is "); Serial.print(lock_status);
+    //    Serial.print("    alpha is "); Serial.println(alpha);
   }
 
   if (lock_status <= LOCK_OPEN)
@@ -92,26 +89,34 @@ void check_lock_sensor()
 }
 
 
-float threshold_up = 20.0f;
-float threshold_down = -20.0f;
+
 
 void update_doorStatus(float degree)
 {
-  // if (degree<0-threshold_pitch || degree>threshold_pitch)
-  // 	door_status=DOOR_OPEN;
-  // else
   door_status = LOCK_OPEN;	//that is DOOR_CLOSE
 }
 
 void update_area(float degree)
 {
   int current_area = 0;
-  if (degree > threshold_up)
-    current_area = POSITIVE;
-  else if (degree < threshold_down)
-    current_area = NEGATIVE;
+  if (threshold_lock > threshold_unlock)
+  {
+    if (degree > threshold_lock)
+      current_area = POSITIVE;
+    else if (degree < threshold_unlock)
+      current_area = NEGATIVE;
+    else
+      current_area = ACTIVE;
+  }
   else
-    current_area = ACTIVE;
+  {
+    if (degree > threshold_unlock)
+      current_area = NEGATIVE;
+    else if (degree < threshold_lock)
+      current_area = POSITIVE;
+    else
+      current_area = ACTIVE;
+  }
 
   //the same area
   if (current_area == area_stack[0])
@@ -142,4 +147,14 @@ void freeze_lock_status()
   area_stack[2] = area_stack[0];
 }
 
+
+void output_lock_status()
+{
+  Serial.print("%");  //mark
+  int angle = shortForFloat(alphaForLock);
+  printHolder(angle);
+  Serial.print(abs(angle));
+  Serial.print("%");  //seperator
+  Serial.println(lock_status>=0?lock_status:0);
+}
 
