@@ -1,4 +1,4 @@
-/****************************************************************************************** //<>// //<>// //<>//
+/****************************************************************************************** //<>// //<>// //<>// //<>//
  * Test Sketch for Razor AHRS v1.4.2
  * 9 Degree of Measurement Attitude and Heading Reference System
  * for Sparkfun "9DOF Razor IMU" and "9DOF Sensor Stick"
@@ -124,12 +124,12 @@ void drawCylinder(float topRadius, float bottomRadius, float tall, int sides) {
 void drawBoard() {
   pushMatrix();
 
-  print("yaw=");
-  println(yaw);
-  print("yawOffset=");
-  println(yawOffset);
-  print("rotate X=");
-  println(-radians(yaw - yawOffset));
+  //print("yaw=");
+  //println(yaw);
+  //print("yawOffset=");
+  //println(yawOffset);
+  //print("rotate X=");
+  //println(-radians(yaw - yawOffset));
 
   rotateY(-radians(yaw - yawOffset));
   rotateX(-radians(pitch - pitchOffset));
@@ -201,9 +201,10 @@ void setupRazor() {
   delay(3000);  // 3 seconds should be enough
 
   // Set Razor output parameters
-  serial.write("#ob");  // Turn on binary output
+  serial.write("#of");  // Turn on binary output
   serial.write("#o0");  // Turn on continuous streaming output
   serial.write("#oe0"); // Disable error message output
+  serial.write("#l0");
 }
 
 boolean synched = false;
@@ -222,6 +223,58 @@ float readFloat(Serial s) {
   return Float.intBitsToFloat(s.read() + (s.read() << 8) + (s.read() << 16) + (s.read() << 24));
 }
 
+
+// Blocks until another byte is available on serial port
+char readChar()
+{
+  while (serial.available() < 1) {
+  } // Block
+  int c=serial.read();
+  return (char)c;
+}
+
+
+float getAngle()
+{
+  char mark;
+  int id[]={0, 0, 0, 0}; //e.g. id = "$+0062" mean 6.2
+
+  while (serial.available() < 5) {
+    delay(10);  //must delay
+  }
+
+  mark=(char)serial.read();
+  for (int i = 0; i < 4; i++) {
+    id[i]=serial.read()-'0';
+  }
+ 
+  //println((char)id[0], id[1], id[2], id[3], id[4]);
+
+  float angle = (mark == '+' ? 1.0 : -1.0) * (id[0] * 100.0 + id[1] * 10.0 + id[2] + id[3] * 0.1);
+  return angle;
+}
+
+void do_parse_command()
+{
+  if (serial.available() > 0)
+  {
+    int val=serial.read();
+    if (val == '@')
+    {
+      yaw = getAngle();
+      pitch = getAngle();
+      roll = getAngle();
+
+      print("Y=");
+      print(yaw);
+      print("    P=");
+      print(pitch);
+      print("    R=");
+      println(roll);
+      println("---------------");
+    }
+  }
+}
 
 void draw() {
   // Reset scene
@@ -247,14 +300,13 @@ void draw() {
   }
 
   // Read angles from serial port
-  while (serial.available() >= 12) { 
-    yaw = readFloat(serial);
+  //while (serial.available() >= 12) { 
+  //  yaw = readFloat(serial);
+  //  pitch = readFloat(serial);
+  //  roll = readFloat(serial);
+  //}
 
-    //discard yaw value to work around drift problem
-    //yaw=0;
-    pitch = readFloat(serial);
-    roll = readFloat(serial);
-  }
+  do_parse_command();
 
   // Draw board
   pushMatrix();
@@ -277,14 +329,6 @@ void draw() {
   text("Pitch: " + ((int) pitch), 150, 0);
   text("Roll: " + ((int) roll), 300, 0);
   popMatrix();
-
-  print("Y=");
-  print(yaw);
-  print("    P=");
-  print(pitch);
-  print("    R=");
-  println(roll);
-  println("---------------");
 }
 
 void keyPressed() {
