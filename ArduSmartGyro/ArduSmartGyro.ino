@@ -61,6 +61,7 @@ boolean output_errors = false;  // true or false
 
 //for lock sensor
 boolean output_lock_status_on;
+boolean output_recorder_status_on;
 float threshold_lock = 20.0f;  //default value
 float threshold_unlock = -20.0f; //default value
 
@@ -176,6 +177,8 @@ float errorYaw[3] = {0, 0, 0};
 float DCM_Matrix[3][3] = {{1, 0, 0}, {0, 1, 0}, {0, 0, 1}};
 float Update_Matrix[3][3] = {{0, 1, 2}, {3, 4, 5}, {6, 7, 8}};
 float Temporary_Matrix[3][3] = {{0, 0, 0}, {0, 0, 0}, {0, 0, 0}};
+
+float DCM_Matrix_Inverse[3][3];
 
 // Euler angles
 float yaw;
@@ -367,6 +370,7 @@ void setup()
 
   turn_output_stream_off();
   output_lock_status_on = true;
+  output_recorder_status_on = false;
 
   //test pins
   //MISO as Input
@@ -403,20 +407,13 @@ void do_command()
       {
         char output_param = readChar();
         float *thres;
-        byte id[4]; //e.g. id = "+170"
-        id[0] = readChar();
-        id[1] = readChar();
-        id[2] = readChar();
-        id[3] = readChar();
         if (output_param == 'l')  //lock thres
-        {
           thres = &threshold_lock;
-          init_lock_sensor();
-        }
         else if (output_param == 'u')  //unlock thres
-        {
           thres = &threshold_unlock;
-          init_lock_sensor();
+        else if (output_param == 'r')  //reset status
+        {
+          thres = 0;
         }
         else
         {
@@ -424,15 +421,24 @@ void do_command()
           return;
         }
 
-        *thres = (id[1]-'0') * 100 + (id[2]-'0') * 10 + id[3]-'0';
-        if (id[0] == '-')
-          *thres = -*thres;
+        if (thres)
+        {
+          byte id[4]; //e.g. id = "+170"
+          id[0] = readChar();
+          id[1] = readChar();
+          id[2] = readChar();
+          id[3] = readChar();
+          *thres = (id[1] - '0') * 100 + (id[2] - '0') * 10 + id[3] - '0';
+          if (id[0] == '-')
+            *thres = -*thres;
 
-        Serial.print("!SET ");
-        Serial.print(output_param == 'd' ? 'd' : 'u');
-        Serial.print("=");
-        Serial.println(*thres);
+          Serial.print("!SET ");
+          Serial.print(output_param == 'd' ? 'd' : 'u');
+          Serial.print("=");
+          Serial.println(*thres);
+        }
 
+        init_lock_sensor();
       }
       else if (command == 's')
       {
@@ -452,10 +458,19 @@ void do_command()
         if (output_param == '0')
         {
           output_lock_status_on = false;
-
         }
         else if (output_param == '1')
           output_lock_status_on = true;
+      }
+      if (command == 'r')  // #r0 to close recorder status output, #r1 to open
+      {
+        char output_param = readChar();
+        if (output_param == '0')
+        {
+          output_recorder_status_on = false;
+        }
+        else if (output_param == '1')
+          output_recorder_status_on = true;
       }
       else if (command == 'o')
       {
@@ -582,7 +597,11 @@ void loop()
       if (output_stream_on || output_single_on)
         output_angles();
 
+
+      DCMMatrix_Inverse();
+
       check_lock_sensor();
+      check_recoder_status();
     }
     else  // Output sensor values
     {

@@ -22,38 +22,47 @@ int area_stack[3];
 int lock_status = LOCK_OPEN;
 int door_status = LOCK_OPEN;
 
+float alphaForLock = 0;
+
+//user must reset status @ N area
 void init_lock_sensor()
 {
-  //by default, lock is open, pointer is in P area
-  lock_status = LOCK_OPEN;
-  area_stack[0] = ACTIVE;
+  //by default, lock is open, init status is P->A->N, meaning of unlock
+  lock_status = LOCK_OPEN+1;  //update_area will +1 later
+  area_stack[0] = NEGATIVE;
   area_stack[1] = ACTIVE;
-  area_stack[2] = ACTIVE;
+  area_stack[2] = POSITIVE;  
 }
 
-float alphaForLock = 0;
-void check_lock_sensor()
+float get_z_in_xy_rotation()
 {
-  float DCM_Matrix_Inverse[3][3];
-  Matrix_Vector_Invert(DCM_Matrix, DCM_Matrix_Inverse);
-  //z=(,0,1) in body frame, here to compute (xx,xy,xz) which is in original fixed frame
+  //z=(0,0,1) in body frame, here to compute (xx,xy,xz) which is in original fixed frame
   float zx = DCM_Matrix_Inverse[0][2];
   float zy = DCM_Matrix_Inverse[1][2];
   float zz = DCM_Matrix_Inverse[2][2];
   // float zr = sqrt(zx*zx + zy*zy + zz*zz);
   float alpha_temp = TO_DEG(atan(zx / zy));
+  float alpha;
 
   if (zx > 0 && zy < 0)
-    alphaForLock = alpha_temp + 180;
+    alpha = alpha_temp + 180;
   else if (zx < 0 && zy < 0)
-    alphaForLock = alpha_temp - 180;
+    alpha = alpha_temp - 180;
   else
-    alphaForLock = alpha_temp;
+    alpha = alpha_temp;
 
   //  Serial.print("alpha is "); Serial.print(alpha);
   //  Serial.print(",   "); Serial.print(zx>0?'+':'-');
   //  Serial.print(",   "); Serial.println(zy>0?'+':'-');
 
+  return alpha;
+}
+
+
+void check_lock_sensor()
+{
+
+  alphaForLock = get_z_in_xy_rotation();
 
   //根据pitch判断门状态
   //  update_doorStatus(TO_DEG(pitch));
@@ -133,10 +142,22 @@ bool check_lock_status()
   if (area_stack[1] != ACTIVE)
     return false;	//keep status
 
+  //N->A->P lock++, P->A->N lock--
   if (area_stack[0] == POSITIVE && area_stack[2] == NEGATIVE)
     lock_status++;
   else if (area_stack[0] == NEGATIVE && area_stack[2] == POSITIVE)
     lock_status--;
+
+
+//  Serial.print("history: ");
+//  Serial.print(stack_name[area_stack[2]]);
+//  Serial.print(" -> ");
+//  Serial.print(stack_name[area_stack[1]]);
+//  Serial.print(" -> ");
+//  Serial.print(stack_name[area_stack[0]]);
+//  Serial.print("      ");
+//  Serial.println(lock_status);
+
   return true;
 }
 
@@ -155,6 +176,6 @@ void output_lock_status()
   printHolder(angle);
   Serial.print(abs(angle));
   Serial.print("%");  //seperator
-  Serial.println(lock_status>=0?lock_status:0);
+  Serial.println(lock_status >= 0 ? lock_status : 0);
 }
 

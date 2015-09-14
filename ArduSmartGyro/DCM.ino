@@ -130,3 +130,9 @@ void Euler_angles(void)
   yaw = atan2(DCM_Matrix[1][0], DCM_Matrix[0][0]);
 }
 
+
+void DCMMatrix_Inverse(void)
+{
+    Matrix_Vector_Invert(DCM_Matrix, DCM_Matrix_Inverse);
+}
+
