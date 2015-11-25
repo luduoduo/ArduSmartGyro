@@ -28,21 +28,34 @@ float alphaForLock = 0;
 void init_lock_sensor()
 {
   //by default, lock is open, init status is P->A->N, meaning of unlock
-  lock_status = LOCK_OPEN+1;  //update_area will +1 later
+  lock_status = LOCK_OPEN + 1; //update_area will +1 later
   area_stack[0] = NEGATIVE;
   area_stack[1] = ACTIVE;
-  area_stack[2] = POSITIVE;  
+  area_stack[2] = POSITIVE;
 }
 
 float get_z_in_xy_rotation()
 {
   //z=(0,0,1) in body frame, here to compute (xx,xy,xz) which is in original fixed frame
+  
   float zx = DCM_Matrix_Inverse[0][2];
   float zy = DCM_Matrix_Inverse[1][2];
   float zz = DCM_Matrix_Inverse[2][2];
+//  Serial.print("z="); Serial.print(zx); Serial.print(", "); Serial.print(zy); Serial.print(", "); Serial.println(zz);
+
+//  float xx = DCM_Matrix_Inverse[0][0];
+//  float xy = DCM_Matrix_Inverse[1][0];
+//  float xz = DCM_Matrix_Inverse[2][0];
+//  Serial.print("xxxx="); Serial.print(xx); Serial.print(", "); Serial.print(xy); Serial.print(", "); Serial.print(xz); Serial.print("   AngleX="); Serial.println(TO_DEG(atan(xz / xy)));
   // float zr = sqrt(zx*zx + zy*zy + zz*zz);
-  float alpha_temp = TO_DEG(atan(zx / zy));
+  float alpha_temp;
   float alpha;
+
+  //lufei: temp to avoid nan
+  if (abs(zy) < 0.001)
+    alpha_temp = 90;
+  else
+    alpha_temp = TO_DEG(atan(zx / zy));
 
   if (zx > 0 && zy < 0)
     alpha = alpha_temp + 180;
@@ -63,6 +76,8 @@ void check_lock_sensor()
 {
 
   alphaForLock = get_z_in_xy_rotation();
+
+  //  Serial.print("a="); Serial.println(alphaForLock);
 
   //根据pitch判断门状态
   //  update_doorStatus(TO_DEG(pitch));
@@ -149,14 +164,14 @@ bool check_lock_status()
     lock_status--;
 
 
-//  Serial.print("history: ");
-//  Serial.print(stack_name[area_stack[2]]);
-//  Serial.print(" -> ");
-//  Serial.print(stack_name[area_stack[1]]);
-//  Serial.print(" -> ");
-//  Serial.print(stack_name[area_stack[0]]);
-//  Serial.print("      ");
-//  Serial.println(lock_status);
+  //  Serial.print("history: ");
+  //  Serial.print(stack_name[area_stack[2]]);
+  //  Serial.print(" -> ");
+  //  Serial.print(stack_name[area_stack[1]]);
+  //  Serial.print(" -> ");
+  //  Serial.print(stack_name[area_stack[0]]);
+  //  Serial.print("      ");
+  //  Serial.println(lock_status);
 
   return true;
 }
@@ -168,7 +183,7 @@ void freeze_lock_status()
   area_stack[2] = area_stack[0];
 }
 
-
+//for exmaple: %-1659%0 means angle=-16.59 degree and status=0
 void output_lock_status()
 {
   Serial.print("%");  //mark

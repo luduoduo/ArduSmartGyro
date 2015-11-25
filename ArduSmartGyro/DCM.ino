@@ -48,7 +48,7 @@ void Drift_correction(void)
   Accel_magnitude = sqrt(Accel_Vector[0] * Accel_Vector[0] + Accel_Vector[1] * Accel_Vector[1] + Accel_Vector[2] * Accel_Vector[2]);
   Accel_magnitude = Accel_magnitude / GRAVITY; // Scale to gravity.
   // Dynamic weighting of accelerometer info (reliability filter)
-  // Weight for accelerometer info (<0.5G = 0.0, 1G = 1.0 , >1.5G = 0.0)  
+  // Weight for accelerometer info (<0.5G = 0.0, 1G = 1.0 , >1.5G = 0.0)
   Accel_weight = constrain(1 - 2 * abs(1 - Accel_magnitude), 0, 1); //
 
   Vector_Cross_Product(&errorRollPitch[0], &Accel_Vector[0], &DCM_Matrix[2][0]); //adjust the ground of reference
@@ -60,34 +60,42 @@ void Drift_correction(void)
 
   Vector_Add(Omega_I, Omega_I, Scaled_Omega_I);
 
-//lufei: disable compass fixing, because it is easy be interfered.
+  //lufei: disable compass fixing, because it is easy be interfered.
   //*****YAW***************
   // We make the gyro YAW drift correction based on compass magnetic heading
-/*
-  mag_heading_x = cos(MAG_Heading);
-  mag_heading_y = sin(MAG_Heading);
-  errorCourse = (DCM_Matrix[0][0] * mag_heading_y) - (DCM_Matrix[1][0] * mag_heading_x); //Calculating YAW error
-  Vector_Scale(errorYaw, &DCM_Matrix[2][0], errorCourse); //Applys the yaw correction to the XYZ rotation of the aircraft, depeding the position.
+  /*
+    mag_heading_x = cos(MAG_Heading);
+    mag_heading_y = sin(MAG_Heading);
+    errorCourse = (DCM_Matrix[0][0] * mag_heading_y) - (DCM_Matrix[1][0] * mag_heading_x); //Calculating YAW error
+    Vector_Scale(errorYaw, &DCM_Matrix[2][0], errorCourse); //Applys the yaw correction to the XYZ rotation of the aircraft, depeding the position.
 
-  Vector_Scale(&Scaled_Omega_P[0], &errorYaw[0], Kp_YAW ); //.01proportional of YAW.
-  Vector_Add(Omega_P, Omega_P, Scaled_Omega_P); //Adding  Proportional.
+    Vector_Scale(&Scaled_Omega_P[0], &errorYaw[0], Kp_YAW ); //.01proportional of YAW.
+    Vector_Add(Omega_P, Omega_P, Scaled_Omega_P); //Adding  Proportional.
 
-  Vector_Scale(&Scaled_Omega_I[0], &errorYaw[0], Ki_YAW); //.00001Integrator
-  Vector_Add(Omega_I, Omega_I, Scaled_Omega_I); //adding integrator to the Omega_I
-*/
+    Vector_Scale(&Scaled_Omega_I[0], &errorYaw[0], Ki_YAW); //.00001Integrator
+    Vector_Add(Omega_I, Omega_I, Scaled_Omega_I); //adding integrator to the Omega_I
+  */
 }
 
 void Matrix_update(void)
 {
-  //  Serial.print("[Gyro] ");
-  //  Serial.print(TO_DEG(Gyro_Vector[0]));
-  //  Serial.print(",       ");
-  //  Serial.print(TO_DEG(Gyro_Vector[1]));
-  //  Serial.print(",       ");
-  //  Serial.println(TO_DEG(Gyro_Vector[2]));
+//  Serial.print("[Gyro] ");
+//  Serial.print(TO_DEG(Gyro_Vector[0]));
+//  Serial.print(",       ");
+//  Serial.print(TO_DEG(Gyro_Vector[1]));
+//  Serial.print(",       ");
+//  Serial.println(TO_DEG(Gyro_Vector[2]));
 
   Vector_Add(&Omega[0], &Gyro_Vector[0], &Omega_I[0]);  //adding proportional term
   Vector_Add(&Omega_Vector[0], &Omega[0], &Omega_P[0]); //adding Integrator term
+
+//  Serial.print("[Omega] ");
+//  Serial.print(TO_DEG(Omega_Vector[0]));
+//  Serial.print(",       ");
+//  Serial.print(TO_DEG(Omega_Vector[1]));
+//  Serial.print(",       ");
+//  Serial.println(TO_DEG(Omega_Vector[2]));
+
 
 #if DEBUG__NO_DRIFT_CORRECTION == true // Do not use drift correction
   Update_Matrix[0][0] = 0;
@@ -131,8 +139,8 @@ void Euler_angles(void)
 }
 
 
-void DCMMatrix_Inverse(void)
+void Do_DCMMatrix_Inverse(void)
 {
-    Matrix_Vector_Invert(DCM_Matrix, DCM_Matrix_Inverse);
+  Matrix_Vector_Invert(DCM_Matrix, DCM_Matrix_Inverse);
 }
 

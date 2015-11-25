@@ -37,8 +37,8 @@
 #define OUTPUT__BAUD_RATE 57600
 
 
+#define COMPUTE__DATA_INTERVAL 30  // in milliseconds
 #define OUTPUT__DATA_INTERVAL 100  // in milliseconds
-
 
 #define OUTPUT__MODE_CALIBRATE_SENSORS 0
 #define OUTPUT__MODE_ANGLES 1 // Outputs yaw/pitch/roll in degrees
@@ -554,6 +554,7 @@ void do_command()
 
 
 // Main loop
+unsigned long time_d_output = 0;
 void loop()
 {
   //  int onOff = digitalRead(INPUT_PIN_BY_MISO);
@@ -564,9 +565,19 @@ void loop()
 
   do_command();
 
+  unsigned long time_d = 0;
+  
   // Time to read
-  if ((millis() - timestamp) >= OUTPUT__DATA_INTERVAL)
+  time_d = millis() - timestamp;
+  if (time_d >= COMPUTE__DATA_INTERVAL)
   {
+    time_d_output += time_d;
+    bool toOutput = time_d_output >= OUTPUT__DATA_INTERVAL;
+    
+    if (toOutput)
+      time_d_output = 0;
+
+
     timestamp_old = timestamp;
     timestamp = millis();
     if (timestamp > timestamp_old)
@@ -594,14 +605,18 @@ void loop()
       Drift_correction();
       Euler_angles();
 
-      if (output_stream_on || output_single_on)
-        output_angles();
+      //Output can be slower than sampling freq, as long as following the BLE sending freq
+      if (toOutput)
+      {
+        if (output_stream_on || output_single_on)
+          output_angles();
 
 
-      DCMMatrix_Inverse();
+        Do_DCMMatrix_Inverse();
 
-      check_lock_sensor();
-      check_recoder_status();
+        check_lock_sensor();
+        check_recoder_status();
+      }
     }
     else  // Output sensor values
     {
