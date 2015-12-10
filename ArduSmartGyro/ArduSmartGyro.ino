@@ -178,8 +178,6 @@ float DCM_Matrix[3][3] = {{1, 0, 0}, {0, 1, 0}, {0, 0, 1}};
 float Update_Matrix[3][3] = {{0, 1, 2}, {3, 4, 5}, {6, 7, 8}};
 float Temporary_Matrix[3][3] = {{0, 0, 0}, {0, 0, 0}, {0, 0, 0}};
 
-float DCM_Matrix_Inverse[3][3];
-
 // Euler angles
 float yaw;
 float pitch;
@@ -610,9 +608,6 @@ void loop()
       {
         if (output_stream_on || output_single_on)
           output_angles();
-
-
-        Do_DCMMatrix_Inverse();
 
         check_lock_sensor();
         check_recoder_status();

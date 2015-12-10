@@ -34,20 +34,17 @@ void init_lock_sensor()
   area_stack[2] = POSITIVE;
 }
 
+//optimized inverse matrix
 float get_z_in_xy_rotation()
 {
   //z=(0,0,1) in body frame, here to compute (xx,xy,xz) which is in original fixed frame
-  
-  float zx = DCM_Matrix_Inverse[0][2];
-  float zy = DCM_Matrix_Inverse[1][2];
-  float zz = DCM_Matrix_Inverse[2][2];
-//  Serial.print("z="); Serial.print(zx); Serial.print(", "); Serial.print(zy); Serial.print(", "); Serial.println(zz);
 
-//  float xx = DCM_Matrix_Inverse[0][0];
-//  float xy = DCM_Matrix_Inverse[1][0];
-//  float xz = DCM_Matrix_Inverse[2][0];
-//  Serial.print("xxxx="); Serial.print(xx); Serial.print(", "); Serial.print(xy); Serial.print(", "); Serial.print(xz); Serial.print("   AngleX="); Serial.println(TO_DEG(atan(xz / xy)));
-  // float zr = sqrt(zx*zx + zy*zy + zz*zz);
+  //DCM is orthogonal matrix, so its inverse is euqal to its transpose.
+  float zx = DCM_Matrix[2][0];    //DCM_Matrix_Inverse[0][2];
+  float zy = DCM_Matrix[2][1];    //DCM_Matrix_Inverse[1][2];
+  float zz = DCM_Matrix[2][2];    //DCM_Matrix_Inverse[2][2];
+  //  Serial.print("z="); Serial.print(zx); Serial.print(", "); Serial.print(zy); Serial.print(", "); Serial.println(zz);
+
   float alpha_temp;
   float alpha;
 

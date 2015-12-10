@@ -3,6 +3,7 @@
 // DCM
 
 /**************************************************/
+//to correct numerical errors to make DCM back to orthogonal matrix
 void Normalize(void)
 {
   float error = 0;
@@ -11,14 +12,15 @@ void Normalize(void)
 
   error = -Vector_Dot_Product(&DCM_Matrix[0][0], &DCM_Matrix[1][0]) * .5; //eq.19
 
-  Vector_Scale(&temporary[0][0], &DCM_Matrix[1][0], error); //eq.19
-  Vector_Scale(&temporary[1][0], &DCM_Matrix[0][0], error); //eq.19
+  Vector_Scale(&temporary[0][0], &DCM_Matrix[1][0], error); //eq.19   -error/2*Y
+  Vector_Scale(&temporary[1][0], &DCM_Matrix[0][0], error); //eq.19   -error/2*X
 
-  Vector_Add(&temporary[0][0], &temporary[0][0], &DCM_Matrix[0][0]);//eq.19
-  Vector_Add(&temporary[1][0], &temporary[1][0], &DCM_Matrix[1][0]);//eq.19
+  Vector_Add(&temporary[0][0], &temporary[0][0], &DCM_Matrix[0][0]);//eq.19   X-error/2*Y
+  Vector_Add(&temporary[1][0], &temporary[1][0], &DCM_Matrix[1][0]);//eq.19   Y-error/2*X
 
   Vector_Cross_Product(&temporary[2][0], &temporary[0][0], &temporary[1][0]); // c= a x b //eq.20
 
+  //The equation is on the Tylor's expansion with approximation to avoid square roots and divisions.
   renorm = .5 * (3 - Vector_Dot_Product(&temporary[0][0], &temporary[0][0])); //eq.21
   Vector_Scale(&DCM_Matrix[0][0], &temporary[0][0], renorm);
 
@@ -58,7 +60,11 @@ void Drift_correction(void)
   //i control
   Vector_Scale(&Scaled_Omega_I[0], &errorRollPitch[0], Ki_ROLLPITCH * Accel_weight);
 
-  Vector_Add(Omega_I, Omega_I, Scaled_Omega_I);
+  Vector_Add(Omega_I, Omega_I, Scaled_Omega_I); //Omega_I is i control value, which is accumulated for integration , lufei
+
+//  Serial.print("weight="); Serial.println(Accel_weight);
+//  Serial.print("Omega_P="); Serial.print(Omega_P[0]); Serial.print(", "); Serial.print(Omega_P[1]); Serial.print(", "); Serial.println(Omega_P[2]);
+//  Serial.print("Omega_I="); Serial.print(Omega_I[0]); Serial.print(", "); Serial.print(Omega_I[1]); Serial.print(", "); Serial.println(Omega_I[2]);
 
   //lufei: disable compass fixing, because it is easy be interfered.
   //*****YAW***************
@@ -79,22 +85,22 @@ void Drift_correction(void)
 
 void Matrix_update(void)
 {
-//  Serial.print("[Gyro] ");
-//  Serial.print(TO_DEG(Gyro_Vector[0]));
-//  Serial.print(",       ");
-//  Serial.print(TO_DEG(Gyro_Vector[1]));
-//  Serial.print(",       ");
-//  Serial.println(TO_DEG(Gyro_Vector[2]));
+  //  Serial.print("[Gyro] ");
+  //  Serial.print(TO_DEG(Gyro_Vector[0]));
+  //  Serial.print(",       ");
+  //  Serial.print(TO_DEG(Gyro_Vector[1]));
+  //  Serial.print(",       ");
+  //  Serial.println(TO_DEG(Gyro_Vector[2]));
 
   Vector_Add(&Omega[0], &Gyro_Vector[0], &Omega_I[0]);  //adding proportional term
   Vector_Add(&Omega_Vector[0], &Omega[0], &Omega_P[0]); //adding Integrator term
 
-//  Serial.print("[Omega] ");
-//  Serial.print(TO_DEG(Omega_Vector[0]));
-//  Serial.print(",       ");
-//  Serial.print(TO_DEG(Omega_Vector[1]));
-//  Serial.print(",       ");
-//  Serial.println(TO_DEG(Omega_Vector[2]));
+  //  Serial.print("[Omega] ");
+  //  Serial.print(TO_DEG(Omega_Vector[0]));
+  //  Serial.print(",       ");
+  //  Serial.print(TO_DEG(Omega_Vector[1]));
+  //  Serial.print(",       ");
+  //  Serial.println(TO_DEG(Omega_Vector[2]));
 
 
 #if DEBUG__NO_DRIFT_CORRECTION == true // Do not use drift correction
@@ -119,7 +125,7 @@ void Matrix_update(void)
   Update_Matrix[2][2] = 0;
 #endif
 
-  Matrix_Multiply(DCM_Matrix, Update_Matrix, Temporary_Matrix); //a*b=c
+  Matrix_Multiply(DCM_Matrix, Update_Matrix, Temporary_Matrix); //a*b=c, Eq.17
 
   for (int x = 0; x < 3; x++) //Matrix Addition (update)
   {
@@ -136,11 +142,5 @@ void Euler_angles(void)
   pitch = -asin(DCM_Matrix[2][0]);
   roll = atan2(DCM_Matrix[2][1], DCM_Matrix[2][2]);
   yaw = atan2(DCM_Matrix[1][0], DCM_Matrix[0][0]);
-}
-
-
-void Do_DCMMatrix_Inverse(void)
-{
-  Matrix_Vector_Invert(DCM_Matrix, DCM_Matrix_Inverse);
 }
 

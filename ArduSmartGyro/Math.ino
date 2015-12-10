@@ -1,5 +1,6 @@
 /* This file is part of the Nano AHRS Firmware */
-#include <MatrixMath.h>
+//We do not need it for DCM, because corrected DCM is orthognal matrix, lufei
+//#include <MatrixMath.h>
 
 // Computes the dot product of two vectors
 float Vector_Dot_Product(const float v1[3], const float v2[3])
@@ -39,6 +40,7 @@ void Vector_Add(float out[3], const float v1[3], const float v2[3])
   }
 }
 
+
 // Multiply two 3x3 matrices: out = a * b
 // out has to different from a and b (no in-place)!
 void Matrix_Multiply(const float a[3][3], const float b[3][3], float out[3][3])
@@ -62,12 +64,13 @@ void Matrix_Vector_Multiply(const float a[3][3], const float b[3], float out[3])
   }
 }
 
-void Matrix_Vector_Invert(const float a[3][3], float out[3][3])
-{
-  int N = 3;
-  Matrix.Copy((float*)a, N, N, (float*)out);
-  Matrix.Invert((float*)out, N);
-}
+//We do not need it for DCM, because corrected DCM is orthognal matrix, lufei
+//void Matrix_Vector_Invert(const float a[3][3], float out[3][3])
+//{
+//  int N = 3;
+//  Matrix.Copy((float*)a, N, N, (float*)out);
+//  Matrix.Invert((float*)out, N);
+//}
 
 
 // Init rotation matrix using euler angles

@@ -3,9 +3,9 @@ float alphaPitchForRec = 0;
 
 float get_x_in_xy_rotation()
 {
-  float xx = DCM_Matrix_Inverse[0][0];
-  float xy = DCM_Matrix_Inverse[1][0];
-  float xz = DCM_Matrix_Inverse[2][0];
+  float xx = DCM_Matrix[0][0];    //DCM_Matrix_Inverse[0][0];
+  float xy = DCM_Matrix[0][1];    //DCM_Matrix_Inverse[1][0];
+  float xz = DCM_Matrix[0][2];    //DCM_Matrix_Inverse[2][0];
 
   float alpha_temp = TO_DEG(atan(xx / xy));
   float alpha;
@@ -17,10 +17,10 @@ float get_x_in_xy_rotation()
   else
     alpha = alpha_temp;
 
-  //make it at 0-360 
-  if (alpha<0)
-    alpha+=360;  
-    
+  //make it at 0-360
+  if (alpha < 0)
+    alpha += 360;
+
   //  Serial.print("alpha is "); Serial.print(alpha);
   //  Serial.print(",   "); Serial.print(xx > 0 ? '+' : '-');
   //  Serial.print(",   "); Serial.println(xy > 0 ? '+' : '-');
@@ -31,9 +31,9 @@ float get_x_in_xy_rotation()
 
 float get_x_in_xz_rotation()
 {
-  float xx = DCM_Matrix_Inverse[0][0];
-  float xy = DCM_Matrix_Inverse[1][0];
-  float xz = DCM_Matrix_Inverse[2][0];
+  float xx = DCM_Matrix[0][0];    //DCM_Matrix_Inverse[0][0];
+  float xy = DCM_Matrix[0][1];    //DCM_Matrix_Inverse[1][0];
+  float xz = DCM_Matrix[0][2];    //DCM_Matrix_Inverse[2][0];
 
   float alpha_temp = TO_DEG(atan(xx / xz));
   float alpha;
@@ -45,9 +45,9 @@ float get_x_in_xz_rotation()
   else
     alpha = alpha_temp;
 
-  //make it at 0-360 
-  if (alpha<0)
-    alpha+=360;  
+  //make it at 0-360
+  if (alpha < 0)
+    alpha += 360;
   //  Serial.print("alpha is "); Serial.print(alpha);
   //  Serial.print(",   "); Serial.print(xx > 0 ? '+' : '-');
   //  Serial.print(",   "); Serial.println(xz > 0 ? '+' : '-');
