@@ -83,7 +83,7 @@ void init_rotation_matrix(float m[3][3], float yaw, float pitch, float roll)
   float c3 = cos(yaw);
   float s3 = sin(yaw);
 
-  // Euler angles, right-handed, intrinsic, XYZ convention
+  // Euler angles, right-handed, intrinsic, XYZ convention, Eqn.2
   // (which means: rotate around body axes Z, Y', X'')
   m[0][0] = c2 * c3;
   m[0][1] = c3 * s1 * s2 - c1 * s3;
@@ -97,6 +97,7 @@ void init_rotation_matrix(float m[3][3], float yaw, float pitch, float roll)
   m[2][1] = c2 * s1;
   m[2][2] = c1 * c2;
 }
+
 
 
 

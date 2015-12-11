@@ -34,16 +34,16 @@ void init_lock_sensor()
   area_stack[2] = POSITIVE;
 }
 
-//optimized inverse matrix
+
+//optimized inverse matrix, Z in ground grame and XY in plane frame
 float get_z_in_xy_rotation()
 {
-  //z=(0,0,1) in body frame, here to compute (xx,xy,xz) which is in original fixed frame
-
-  //DCM is orthogonal matrix, so its inverse is euqal to its transpose.
+  //z=(0,0,1) in ground frame is vertical, we watch it in plane frame.
+  //The column DCM_Inverse[*][2] is equal to DCM_I * Z(0,0,1), meaning Zp (plane/body frame) comming from Zg,
+  //meaning also the row DCM_Matrix[2][*]
   float zx = DCM_Matrix[2][0];    //DCM_Matrix_Inverse[0][2];
   float zy = DCM_Matrix[2][1];    //DCM_Matrix_Inverse[1][2];
   float zz = DCM_Matrix[2][2];    //DCM_Matrix_Inverse[2][2];
-  //  Serial.print("z="); Serial.print(zx); Serial.print(", "); Serial.print(zy); Serial.print(", "); Serial.println(zz);
 
   float alpha_temp;
   float alpha;
@@ -53,6 +53,11 @@ float get_z_in_xy_rotation()
     alpha_temp = 90;
   else
     alpha_temp = TO_DEG(atan(zx / zy));
+
+//  Serial.print("zx="); Serial.print(zx);
+//  Serial.print(", zy="); Serial.print(zy);
+//  Serial.print(", zz="); Serial.print(zz);
+//  Serial.print(", alpha="); Serial.println(alpha_temp);
 
   if (zx > 0 && zy < 0)
     alpha = alpha_temp + 180;

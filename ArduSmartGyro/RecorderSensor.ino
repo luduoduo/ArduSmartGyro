@@ -1,6 +1,7 @@
 float alphaYawForRec = 0;
 float alphaPitchForRec = 0;
 
+//for yaw
 float get_x_in_xy_rotation()
 {
   float xx = DCM_Matrix[0][0];    //DCM_Matrix_Inverse[0][0];
@@ -28,7 +29,7 @@ float get_x_in_xy_rotation()
   return alpha;
 }
 
-
+//for pitch
 float get_x_in_xz_rotation()
 {
   float xx = DCM_Matrix[0][0];    //DCM_Matrix_Inverse[0][0];
@@ -76,5 +77,6 @@ void output_recorder_status()
   printHolder(angle);
   Serial.println(abs(angle));
 }
+
 
 

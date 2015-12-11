@@ -236,7 +236,8 @@ void reset_sensor_fusion() {
   Serial.println(TO_DEG(roll));
 
   // Init rotation matrix
-  //  init_rotation_matrix(DCM_Matrix, yaw, pitch, roll);
+//    init_rotation_matrix(DCM_Matrix, yaw, pitch, roll);
+  //lufei: do we really need to skip it?
   //lufei: use 0 to skip first DCM to make current attitude 0,0,0
   init_rotation_matrix(DCM_Matrix, 0, 0, 0);
 }
@@ -387,6 +388,7 @@ void setup()
   init_lock_sensor();
 }
 
+void(* resetFunc) (void) = 0;//declare reset function at address 0
 
 void do_command()
 {
@@ -469,6 +471,10 @@ void do_command()
         }
         else if (output_param == '1')
           output_recorder_status_on = true;
+      }
+      if (command == 'R')  // #R to reset arduino
+      {
+          resetFunc();  //call reset
       }
       else if (command == 'o')
       {
@@ -634,3 +640,4 @@ void loop()
   }
 #endif
 }
+
