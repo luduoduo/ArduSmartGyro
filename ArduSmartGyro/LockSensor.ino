@@ -13,25 +13,128 @@ enum {
   LOCK_CLOSE2,
   LOCK_CLOSE3
 };
+
+//rotate from u to l, true means clockwise, false means counter clockwise
+bool gCLOCKWISE = true;
+float gHALFPOINT = -180.0f;
+
+//[2] is earlier postion than [1]
 char stack_name[3] = {'P', 'N', 'A'};
 
 //[0] is current, [1] is previous
-int area_stack[3];
+//P->A->N for clockWise is true and lock is open
+int area_stack[3] = {1, 2, 0};
 
 //默认状态是门关闭+锁打开
 int lock_status = LOCK_OPEN;
 int door_status = LOCK_OPEN;
 
-float alphaForLock = 0;
+void output_area_stack()
+{
+  Serial.print("history <");
+  Serial.print(gCLOCKWISE ? " CW> " : "CCW> ");
+  Serial.print("u="); Serial.print(threshold_unlock);
+  Serial.print(", l="); Serial.print(threshold_lock);
+  Serial.print(", h="); Serial.print(gHALFPOINT); Serial.print(" : ");
+  Serial.print(stack_name[area_stack[2]]); Serial.print("[2] -> ");
+  Serial.print(stack_name[area_stack[1]]); Serial.print("[1] -> ");
+  Serial.print(stack_name[area_stack[0]]); Serial.print("[0]    ");
+  Serial.print(lock_status);
+  Serial.print("  (");
+  Serial.print(alphaForLock);
+  Serial.println(")");
+}
 
-//user must reset status @ N area
-void init_lock_sensor()
+//toLock means if unlock or lock has just been updated
+void init_lock_sensor(bool toLock)
 {
   //by default, lock is open, init status is P->A->N, meaning of unlock
-  lock_status = LOCK_OPEN + 1; //update_area will +1 later
-  area_stack[0] = NEGATIVE;
-  area_stack[1] = ACTIVE;
-  area_stack[2] = POSITIVE;
+  if (toLock)
+  {
+    //toLock is true means we are marking 'l' and make the lock is close (N->A->P)
+    lock_status = LOCK_CLOSE1;
+    area_stack[0] = POSITIVE;
+    area_stack[1] = ACTIVE;
+    area_stack[2] = NEGATIVE;
+  }
+  else
+  {
+    lock_status = LOCK_OPEN;
+    area_stack[0] = NEGATIVE;
+    area_stack[1] = ACTIVE;
+    area_stack[2] = POSITIVE;
+  }
+
+  float diff = threshold_lock - threshold_unlock;
+  if (diff <= -180.0)
+  {
+    gCLOCKWISE = true;
+    gHALFPOINT = (threshold_lock + threshold_unlock) / 2;
+  }
+  else if (diff > -180.0 && diff < 0)
+  {
+    gCLOCKWISE = false;
+    gHALFPOINT = (threshold_lock + threshold_unlock) / 2 + 180;
+    if (gHALFPOINT > 180)
+      gHALFPOINT -= 360;
+  }
+  else if (diff > 0 && diff < 180.0)
+  {
+    gCLOCKWISE = true;
+    gHALFPOINT = (threshold_lock + threshold_unlock) / 2 + 180;
+    if (gHALFPOINT > 180)
+      gHALFPOINT -= 360;
+  }
+  else //diff>180.0
+  {
+    gCLOCKWISE = false;
+    gHALFPOINT = (threshold_lock + threshold_unlock) / 2;
+  }
+
+  if (gCLOCKWISE && gHALFPOINT == 180)
+    gHALFPOINT = -180;
+  else if (!gCLOCKWISE && gHALFPOINT == -180)
+    gHALFPOINT = 180;
+
+  //to avoid incoming wrong changing report when next angle arrives
+  //freeze can clear history
+  freeze_lock_status();
+  //  output_area_stack();
+}
+
+//determine if the angle is in the area of from the start to the end
+//there are different process according to closkwise
+bool determineArea(float startAngle, float endAngle, float angle)
+{
+  bool result = false;
+  if (gCLOCKWISE)
+  {
+    if (startAngle < endAngle)
+    {
+      if ( startAngle < angle  && angle < endAngle)
+        result = true;
+    }
+    else
+    {
+      if (angle > startAngle || angle < endAngle)
+        result = true;
+    }
+  }
+  else
+  {
+    if (startAngle < endAngle)
+    {
+      if ( angle < startAngle || angle > endAngle)
+        result = true;
+
+    }
+    else
+    {
+      if (endAngle < angle && angle < startAngle)
+        result = true;
+    }
+  }
+  return result;
 }
 
 
@@ -54,10 +157,10 @@ float get_z_in_xy_rotation()
   else
     alpha_temp = TO_DEG(atan(zx / zy));
 
-//  Serial.print("zx="); Serial.print(zx);
-//  Serial.print(", zy="); Serial.print(zy);
-//  Serial.print(", zz="); Serial.print(zz);
-//  Serial.print(", alpha="); Serial.println(alpha_temp);
+  //  Serial.print("zx="); Serial.print(zx);
+  //  Serial.print(", zy="); Serial.print(zy);
+  //  Serial.print(", zz="); Serial.print(zz);
+  //  Serial.print(", alpha="); Serial.println(alpha_temp);
 
   if (zx > 0 && zy < 0)
     alpha = alpha_temp + 180;
@@ -99,50 +202,42 @@ void check_lock_sensor()
     //    Serial.print("    alpha is "); Serial.println(alpha);
   }
 
-  if (lock_status <= LOCK_OPEN)
-  {
-    digitalWrite(STATUS_LED_PIN, HIGH);
-  }
-  else
-  {
-    if (lock_status > LOCK_OPEN)
-      digitalWrite(STATUS_LED_PIN, LOW);
-    if (lock_status > LOCK_CLOSE1)
-      digitalWrite(STATUS_LED_PIN, LOW);
-    if (lock_status > LOCK_CLOSE2)
-      digitalWrite(STATUS_LED_PIN, LOW);
-  }
+  //disable LED alarm
+  //  if (lock_status <= LOCK_OPEN)
+  //  {
+  //    digitalWrite(STATUS_LED_PIN, HIGH);
+  //  }
+  //  else
+  //  {
+  //    if (lock_status > LOCK_OPEN)
+  //      digitalWrite(STATUS_LED_PIN, LOW);
+  //    if (lock_status > LOCK_CLOSE1)
+  //      digitalWrite(STATUS_LED_PIN, LOW);
+  //    if (lock_status > LOCK_CLOSE2)
+  //      digitalWrite(STATUS_LED_PIN, LOW);
+  //  }
 }
 
 
 
 
-void update_doorStatus(float degree)
-{
-  door_status = LOCK_OPEN;	//that is DOOR_CLOSE
-}
+//void update_doorStatus(float degree)
+//{
+//  door_status = LOCK_OPEN;	//that is DOOR_CLOSE
+//}
 
 void update_area(float degree)
 {
   int current_area = 0;
-  if (threshold_lock > threshold_unlock)
-  {
-    if (degree > threshold_lock)
-      current_area = POSITIVE;
-    else if (degree < threshold_unlock)
-      current_area = NEGATIVE;
-    else
-      current_area = ACTIVE;
-  }
+
+  if (determineArea(gHALFPOINT, threshold_unlock, degree))
+    current_area = NEGATIVE;
+  else if (determineArea(threshold_unlock, threshold_lock, degree))
+    current_area = ACTIVE;
   else
-  {
-    if (degree > threshold_unlock)
-      current_area = NEGATIVE;
-    else if (degree < threshold_lock)
-      current_area = POSITIVE;
-    else
-      current_area = ACTIVE;
-  }
+    current_area = POSITIVE;
+
+  //  Serial.print("HIT: "); Serial.print(stack_name[current_area]);Serial.print(",  ");Serial.println(degree);
 
   //the same area
   if (current_area == area_stack[0])
@@ -151,9 +246,11 @@ void update_area(float degree)
   area_stack[2] = area_stack[1];
   area_stack[1] = area_stack[0];
   area_stack[0] = current_area;
+
+//  output_area_stack();
 }
 
-//根据三段历史来判断状态
+//根据三段历史来判断状态是否发生变化
 bool check_lock_status()
 {
   if (area_stack[1] != ACTIVE)
@@ -164,25 +261,19 @@ bool check_lock_status()
     lock_status++;
   else if (area_stack[0] == NEGATIVE && area_stack[2] == POSITIVE)
     lock_status--;
-
-
-  //  Serial.print("history: ");
-  //  Serial.print(stack_name[area_stack[2]]);
-  //  Serial.print(" -> ");
-  //  Serial.print(stack_name[area_stack[1]]);
-  //  Serial.print(" -> ");
-  //  Serial.print(stack_name[area_stack[0]]);
-  //  Serial.print("      ");
-  //  Serial.println(lock_status);
-
+  else  //NAN, PAP, or others considered as no change
+    return false;
   return true;
 }
 
+
+//If we do not freeze (clear) status, the changing event will be sent repeatedly
 void freeze_lock_status()
 {
   //clear history
   area_stack[1] = area_stack[0];
   area_stack[2] = area_stack[0];
+  Serial.println("freeze_lock_status");
 }
 
 //for exmaple: %-1659%0 means angle=-16.59 degree and status=0

@@ -37,7 +37,7 @@
 #define OUTPUT__BAUD_RATE 57600
 
 
-#define COMPUTE__DATA_INTERVAL 30  // in milliseconds
+#define COMPUTE__DATA_INTERVAL 20  // in milliseconds
 #define OUTPUT__DATA_INTERVAL 100  // in milliseconds
 
 #define OUTPUT__MODE_CALIBRATE_SENSORS 0
@@ -64,6 +64,7 @@ boolean output_lock_status_on;
 boolean output_recorder_status_on;
 float threshold_lock = 20.0f;  //default value
 float threshold_unlock = -20.0f; //default value
+float alphaForLock = -30.0f; //default is in N area
 
 #define OUTPUT__HAS_RN_BLUETOOTH false  // true or false
 
@@ -148,6 +149,7 @@ float gyro_avg_offset_z = 0;
 #define TO_RAD(x) (x * 0.01745329252)  // *pi/180
 #define TO_DEG(x) (x * 57.2957795131)  // *180/pi
 
+#define OUPUT_PIN_BY_MOSI 11
 #define INPUT_PIN_BY_MISO 12
 
 // Sensor variables
@@ -236,7 +238,7 @@ void reset_sensor_fusion() {
   Serial.println(TO_DEG(roll));
 
   // Init rotation matrix
-//    init_rotation_matrix(DCM_Matrix, yaw, pitch, roll);
+  //    init_rotation_matrix(DCM_Matrix, yaw, pitch, roll);
   //lufei: do we really need to skip it?
   //lufei: use 0 to skip first DCM to make current attitude 0,0,0
   init_rotation_matrix(DCM_Matrix, 0, 0, 0);
@@ -376,6 +378,10 @@ void setup()
   pinMode (INPUT_PIN_BY_MISO, INPUT);
   digitalWrite(INPUT_PIN_BY_MISO, HIGH);
 
+  //MOSI as Output to supply power of BLE chip, which should be <40mA
+  pinMode (OUPUT_PIN_BY_MOSI, OUTPUT);
+  digitalWrite(OUPUT_PIN_BY_MOSI, HIGH);
+
   //wait for 1 sec for being static
   delay(1000);
   do_first_calibration();
@@ -385,7 +391,7 @@ void setup()
   digitalWrite(STATUS_LED_PIN, LOW);
 
 
-  init_lock_sensor();
+  init_lock_sensor(true);
 }
 
 void(* resetFunc) (void) = 0;//declare reset function at address 0
@@ -406,22 +412,22 @@ void do_command()
       else if (command == 'i')
       {
         char output_param = readChar();
-        float *thres;
+        float *thres = NULL;
         if (output_param == 'l')  //lock thres
           thres = &threshold_lock;
         else if (output_param == 'u')  //unlock thres
           thres = &threshold_unlock;
         else if (output_param == 'r')  //reset status
         {
-          thres = 0;
+          //待定
         }
         else
         {
-          Serial.println("Error!");
+          //          Serial.println("Error!");
           return;
         }
 
-        if (thres)
+        if (thres != 0)
         {
           byte id[4]; //e.g. id = "+170"
           id[0] = readChar();
@@ -433,13 +439,14 @@ void do_command()
             *thres = -*thres;
 
           Serial.print("!SET ");
-          Serial.print(output_param == 'd' ? 'd' : 'u');
+          Serial.print(output_param == 'l' ? 'l' : 'u');
           Serial.print("=");
           Serial.println(*thres);
         }
 
-        init_lock_sensor();
-      }
+        init_lock_sensor(output_param == 'l');
+
+      }  //end if 'i'
       else if (command == 's')
       {
         // Read ID
@@ -452,7 +459,7 @@ void do_command()
         Serial.write(id, 2);
         Serial.println();
       }
-      if (command == 'l')  // #l0 to close lock output, #l1 to open
+      else if (command == 'l')  // #l0 to close lock output, #l1 to open
       {
         char output_param = readChar();
         if (output_param == '0')
@@ -462,7 +469,7 @@ void do_command()
         else if (output_param == '1')
           output_lock_status_on = true;
       }
-      if (command == 'r')  // #r0 to close recorder status output, #r1 to open
+      else if (command == 'r')  // #r0 to close recorder status output, #r1 to open
       {
         char output_param = readChar();
         if (output_param == '0')
@@ -472,9 +479,9 @@ void do_command()
         else if (output_param == '1')
           output_recorder_status_on = true;
       }
-      if (command == 'R')  // #R to reset arduino
+      else if (command == 'R')  // #R to reset arduino
       {
-          resetFunc();  //call reset
+        resetFunc();  //call reset
       }
       else if (command == 'o')
       {
@@ -543,7 +550,7 @@ void do_command()
             Serial.println(num_gyro_errors);
           }
         }
-      }
+      } //end of 'o'
 #if OUTPUT__HAS_RN_BLUETOOTH == true
       else if (command == 'C')
         turn_output_stream_on();
@@ -570,14 +577,14 @@ void loop()
   do_command();
 
   unsigned long time_d = 0;
-  
+
   // Time to read
   time_d = millis() - timestamp;
   if (time_d >= COMPUTE__DATA_INTERVAL)
   {
     time_d_output += time_d;
     bool toOutput = time_d_output >= OUTPUT__DATA_INTERVAL;
-    
+
     if (toOutput)
       time_d_output = 0;
 
