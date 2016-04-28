@@ -375,12 +375,16 @@ void setup()
 
   //test pins
   //MISO as Input
-  pinMode (INPUT_PIN_BY_MISO, INPUT);
-  digitalWrite(INPUT_PIN_BY_MISO, HIGH);
+//  pinMode (INPUT_PIN_BY_MISO, INPUT);
+//  digitalWrite(INPUT_PIN_BY_MISO, HIGH);
 
   //MOSI as Output to supply power of BLE chip, which should be <40mA
   pinMode (OUPUT_PIN_BY_MOSI, OUTPUT);
   digitalWrite(OUPUT_PIN_BY_MOSI, HIGH);
+
+  //Double power supply
+  pinMode (INPUT_PIN_BY_MISO, OUTPUT);
+  digitalWrite(INPUT_PIN_BY_MISO, HIGH);
 
   //wait for 1 sec for being static
   delay(1000);
