@@ -1,7 +1,7 @@
 /****************************************************************************************** //<>// //<>// //<>// //<>//
- * Test Sketch for Razor AHRS v1.4.2
+ * Test Sketch for Gyro AHRS v1.4.2
  * 9 Degree of Measurement Attitude and Heading Reference System
- * for Sparkfun "9DOF Razor IMU" and "9DOF Sensor Stick"
+ * for Sparkfun "9DOF Gyro IMU" and "9DOF Sensor Stick"
  *
  * Released under GNU GPL (General Public License) v3.0
  * Copyright (C) 2013 Peter Bartz [http://ptrbrtz.net]
@@ -9,7 +9,7 @@
  * Written by Peter Bartz (peter-bartz@gmx.de)
  *
  * Infos, updates, bug reports, contributions and feedback:
- *     https://github.com/ptrbrtz/razor-9dof-ahrs
+ *     https://github.com/ptrbrtz/Gyro-9dof-ahrs
  ******************************************************************************************/
 
 /*
@@ -26,7 +26,7 @@ import processing.serial.*;
 // 1. Have a look at the Processing console output of this sketch.
 // 2. Look for the serial port list and find the port you need (it's the same as in Arduino).
 // 3. Set your port number here:
-final static int SERIAL_PORT_NUM = 5;
+final static int SERIAL_PORT_NUM = 1;
 // 4. Try again.
 
 
@@ -187,24 +187,24 @@ void setup() {
   println("  -> Using port " + SERIAL_PORT_NUM + ": " + portName);
   serial = new Serial(this, portName, SERIAL_PORT_BAUD_RATE);
 
-  setupRazor();
+  setupGyro();
 }
 
-void setupRazor() {
-  println("Trying to setup and synch Razor...");
+void setupGyro() {
+  println("Trying to setup and synch Gyro...");
 
   // On Mac OSX and Linux (Windows too?) the board will do a reset when we connect, which is really bad.
   // See "Automatic (Software) Reset" on http://www.arduino.cc/en/Main/ArduinoBoardProMini
-  // So we have to wait until the bootloader is finished and the Razor firmware can receive commands.
+  // So we have to wait until the bootloader is finished and the Gyro firmware can receive commands.
   // To prevent this, disconnect/cut/unplug the DTR line going to the board. This also has the advantage,
   // that the angles you receive are stable right from the beginning. 
-  delay(3000);  // 3 seconds should be enough
+  // delay(3000);  // 3 seconds should be enough
 
-  // Set Razor output parameters
-  serial.write("#of");  // Turn on binary output
-  serial.write("#o0");  // Turn on continuous streaming output
-  serial.write("#oe0"); // Disable error message output
+  // Set Gyro output parameters
   serial.write("#l0");
+  serial.write("#of");  // Turn on short-style output
+  serial.write("#o1");  // Turn on continuous streaming output
+  serial.write("#oe0"); // Disable error message output
 }
 
 boolean synched = false;
@@ -212,14 +212,14 @@ boolean syncRequested = false;
 
 void requestSync()
 {
-  // Synch with Razor
+  // Synch with Gyro
   serial.clear();  // Clear input buffer up to here
   serial.write("#s00");  // Request synch token
 }
 
 
 float readFloat(Serial s) {
-  // Convert from little endian (Razor) to big endian (Java) and interpret as float
+  // Convert from little endian (Gyro) to big endian (Java) and interpret as float
   return Float.intBitsToFloat(s.read() + (s.read() << 8) + (s.read() << 16) + (s.read() << 24));
 }
 
@@ -247,7 +247,7 @@ float getAngle()
   for (int i = 0; i < 4; i++) {
     id[i]=serial.read()-'0';
   }
- 
+
   //println((char)id[0], id[1], id[2], id[3], id[4]);
 
   float angle = (mark == '+' ? 1.0 : -1.0) * (id[0] * 100.0 + id[1] * 10.0 + id[2] + id[3] * 0.1);
@@ -259,19 +259,19 @@ void do_parse_command()
   if (serial.available() > 0)
   {
     int val=serial.read();
-    if (val == '@')
+    if (val == '@')  //Euler angle output
     {
       yaw = getAngle();
       pitch = getAngle();
       roll = getAngle();
 
-      print("Y=");
-      print(yaw);
-      print("    P=");
-      print(pitch);
-      print("    R=");
-      println(roll);
-      println("---------------");
+      //print("Y=");
+      //print(yaw);
+      //print("    P=");
+      //print(pitch);
+      //print("    R=");
+      //println(roll);
+      //println("---------------");
     }
   }
 }
@@ -280,14 +280,13 @@ void draw() {
   // Reset scene
   background(0);
 
-  //resulting in crash
-  //lights();
+  lights();
 
-  // Sync with Razor 
+  // Sync with Gyro 
   if (!synched) {
     textAlign(CENTER);
     fill(255);
-    text("Connecting to Razor...", width/2, height/2, -200);
+    text("Connecting to Gyro...", width/2, height/2, -200);
 
     if (!syncRequested)
     {
@@ -296,6 +295,9 @@ void draw() {
     }
 
     synched = readToken(serial, "#SYNCH00\r\n");  // Look for synch token
+    if (synched)
+      println("synched OK");
+
     return;
   }
 
@@ -333,16 +335,16 @@ void draw() {
 
 void keyPressed() {
   switch (key) {
-  case '0':  // Turn Razor's continuous output stream off
+  case '0':  // Turn Gyro's continuous output stream off
     serial.write("#o0");
     break;
-  case '1':  // Turn Razor's continuous output stream on
+  case '1':  // Turn Gyro's continuous output stream on
     serial.write("#o1");
     break;
-  case 'f':  // Request one single yaw/pitch/roll frame from Razor (use when continuous streaming is off)
+  case 'f':  // Request one single yaw/pitch/roll frame from Gyro (use when continuous streaming is off)
     serial.write("#f");
     break;
-  case 'a':  // Align screen with Razor
+  case 'a':  // Align screen with Gyro
     yawOffset = yaw;
     //pitchOffset = pitch;
     //rollOffset = roll;
