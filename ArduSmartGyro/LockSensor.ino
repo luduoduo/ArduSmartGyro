@@ -283,7 +283,7 @@ void output_lock_status()
   int angle = shortForFloat(alphaForLock);
   printHolder(angle);
   Serial.print(abs(angle));
-  Serial.print("%");  //seperator
+  Serial.print("^");  //seperator
   Serial.println(lock_status >= 0 ? lock_status : 0);
 }
 
