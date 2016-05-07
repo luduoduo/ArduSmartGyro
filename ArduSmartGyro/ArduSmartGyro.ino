@@ -144,7 +144,9 @@ float gyro_avg_offset_z = 0;
 #define Ki_YAW 0.00002f
 
 // Stuff
+//Pull down the 13(SCK) to gnd by wiring, so disable all of LED PIN output
 #define STATUS_LED_PIN 13
+
 #define GRAVITY 256.0f // "1G reference"
 #define TO_RAD(x) (x * 0.01745329252)  // *pi/180
 #define TO_DEG(x) (x * 57.2957795131)  // *180/pi
@@ -292,13 +294,11 @@ void check_reset_calibration_session()
 void turn_output_stream_on()
 {
   output_stream_on = true;
-  digitalWrite(STATUS_LED_PIN, HIGH);
 }
 
 void turn_output_stream_off()
 {
   output_stream_on = false;
-  digitalWrite(STATUS_LED_PIN, LOW);
 }
 
 // Blocks until another byte is available on serial port
@@ -321,8 +321,6 @@ void do_first_calibration()
   time_interval = 100;
   while (timeMS_for_cali_offset > 0)
   {
-    digitalWrite(STATUS_LED_PIN, led_ON_off);
-    led_ON_off = !led_ON_off;
     delay(time_interval);
 
     read_sensors();
@@ -355,8 +353,10 @@ void setup()
   }
   Serial.println("AHRS is ready");
 
-  // Init status LED
-  pinMode (STATUS_LED_PIN, OUTPUT);
+  //it is wired to GND, so here we set it to INPUT 
+  //warning: output+high may cause drawing a lot of current
+  pinMode (STATUS_LED_PIN, INPUT);
+  digitalWrite(STATUS_LED_PIN, LOW);
 
   // Init sensors
   delay(50);  // Give sensors enough time to start
@@ -373,11 +373,6 @@ void setup()
   output_lock_status_on = true;
   output_recorder_status_on = false;
 
-  //test pins
-  //MISO as Input
-//  pinMode (INPUT_PIN_BY_MISO, INPUT);
-//  digitalWrite(INPUT_PIN_BY_MISO, HIGH);
-
   //MOSI as Output to supply power of BLE chip, which should be <40mA
   pinMode (OUPUT_PIN_BY_MOSI, OUTPUT);
   digitalWrite(OUPUT_PIN_BY_MOSI, HIGH);
@@ -389,11 +384,6 @@ void setup()
   //wait for 1 sec for being static
   delay(1000);
   do_first_calibration();
-
-  digitalWrite(STATUS_LED_PIN, HIGH);
-  delay(500);
-  digitalWrite(STATUS_LED_PIN, LOW);
-
 
   init_lock_sensor(true);
 }
