@@ -37,7 +37,7 @@
 #define OUTPUT__BAUD_RATE 57600
 
 
-#define COMPUTE__DATA_INTERVAL 20  // in milliseconds
+#define COMPUTE__DATA_INTERVAL 10  // in milliseconds
 #define OUTPUT__DATA_INTERVAL 100  // in milliseconds
 
 #define OUTPUT__MODE_CALIBRATE_SENSORS 0
